@@ -111,18 +111,24 @@ class IRNet(BasicModel):
 
 
         src_encodings, (last_state, last_cell) = self.encode(batch.src_sents, batch.src_sents_len, None)
+        # print(src_encodings.shape) torch.Size([64, sen_len(变长), 300])
 
         src_encodings = self.dropout(src_encodings)
 
         utterance_encodings_sketch_linear = self.att_sketch_linear(src_encodings)
+        # print('utterance_encodings_sketch_linear:',utterance_encodings_sketch_linear.shape) torch.Size([64, sen_len(变长), 300])
         utterance_encodings_lf_linear = self.att_lf_linear(src_encodings)
+        # print('utterance_encodings_lf_linear:', utterance_encodings_lf_linear.shape) torch.Size([64, sen_len(变长), 300])
 
         dec_init_vec = self.init_decoder_state(last_cell)
         h_tm1 = dec_init_vec
+        # print('h_tm1:', h_tm1[0].shape) # torch.Size([64, 300])
         action_probs = [[] for _ in examples]
 
         zero_action_embed = Variable(self.new_tensor(args.action_embed_size).zero_())
+        # print('zero_action_embed:', zero_action_embed.shape) torch.Size([128])
         zero_type_embed = Variable(self.new_tensor(args.type_embed_size).zero_())
+        # print('zero_type_embed:', zero_type_embed.shape) torch.Size([128])
 
         sketch_attention_history = list()
 
@@ -130,7 +136,9 @@ class IRNet(BasicModel):
             if t == 0:
                 x = Variable(self.new_tensor(len(batch), self.sketch_decoder_lstm.input_size).zero_(),
                              requires_grad=False)
+                    # print('x:',x.shape) torch.Size([64, 556])
             else:
+                #sketch_action编码，64*max_sketch_num
                 a_tm1_embeds = []
                 pre_types = []
                 for e_id, example in enumerate(examples):
@@ -173,18 +181,19 @@ class IRNet(BasicModel):
                 inputs.append(att_tm1)
                 inputs.append(pre_types)
                 x = torch.cat(inputs, dim=-1)
-
             src_mask = batch.src_token_mask
-
+            # rnn?
             (h_t, cell_t), att_t, aw = self.step(x, h_tm1, src_encodings,
                                                  utterance_encodings_sketch_linear, self.sketch_decoder_lstm,
                                                  self.sketch_att_vec_linear,
                                                  src_token_mask=src_mask, return_att_weight=True)
             sketch_attention_history.append(att_t)
+            #print('sketch_attention_history:',len(sketch_attention_history),sketch_attention_history[0].shape),1->max_sketch_num,torch.Size([64, 300]
 
-            # get the Root possibility
+            # get the Root possibility,在att_t解析出规则概率
             apply_rule_prob = F.softmax(self.production_readout(att_t), dim=-1)
 
+            # 对每个例子，计算第t步选择动作的概率
             for e_id, example in enumerate(examples):
                 if t < len(example.sketch):
                     action_t = example.sketch[t]
@@ -194,32 +203,40 @@ class IRNet(BasicModel):
             h_tm1 = (h_t, cell_t)
             att_tm1 = att_t
 
+
+        # 循环完毕，对动作概率矩阵作整理
+        #print('action_probs:',len(action_probs),len(action_probs[0])) (64 5,4,7,9)即64*action_num，每一个位置是一个数值tensor
         sketch_prob_var = torch.stack(
             [torch.stack(action_probs_i, dim=0).log().sum() for action_probs_i in action_probs], dim=0)
+        #print('sketch_prob_var:',sketch_prob_var.shape) torch.Size([64])
 
         table_embedding = self.gen_x_batch(batch.table_sents)
         src_embedding = self.gen_x_batch(batch.src_sents)
         schema_embedding = self.gen_x_batch(batch.table_names)
+        # print(table_embedding.shape, src_embedding.shape, schema_embedding.shape) #torch.Size([64, 45, 300]) torch.Size([64, 23, 300]) torch.Size([64, 18, 300])
 
-        # get emb differ
+        # get emb differ，应该就是余弦相似度
         embedding_differ = self.embedding_cosine(src_embedding=src_embedding, table_embedding=table_embedding,
                                                  table_unk_mask=batch.table_unk_mask)
-
         schema_differ = self.embedding_cosine(src_embedding=src_embedding, table_embedding=schema_embedding,
                                               table_unk_mask=batch.schema_token_mask)
+        # print(embedding_differ.shape,schema_differ.shape) torch.Size([64, 45, 23]) torch.Size([64, 18, 23])
 
         tab_ctx = (src_encodings.unsqueeze(1) * embedding_differ.unsqueeze(3)).sum(2)
         schema_ctx = (src_encodings.unsqueeze(1) * schema_differ.unsqueeze(3)).sum(2)
-
+        # print(tab_ctx.shape, schema_ctx.shape),torch.Size([64, 45, 300]) torch.Size([64, 18, 300])
 
         table_embedding = table_embedding + tab_ctx
 
         schema_embedding = schema_embedding + schema_ctx
 
+        # 表征每一个col是什么类型，独热编码和embedding
         col_type = self.input_type(batch.col_hot_type)
 
         col_type_var = self.col_type(col_type)
+        # print(col_type.shape, col_type_var.shape) torch.Size([64, 45, 4]) torch.Size([64, 45, 300])
 
+        # 通过加法来融入类型信息
         table_embedding = table_embedding + col_type_var
 
         batch_table_dict = batch.col_table_dict
@@ -345,6 +362,7 @@ class IRNet(BasicModel):
             att_tm1 = att_t
         lf_prob_var = torch.stack(
             [torch.stack(action_probs_i, dim=0).log().sum() for action_probs_i in action_probs], dim=0)
+        # print('lf_prob_var:',lf_prob_var.shape) torch.Size([64]
 
         return [sketch_prob_var, lf_prob_var]
 

@@ -28,7 +28,7 @@ wordnet_lemmatizer = WordNetLemmatizer()
 def load_word_emb(file_name, use_small=False):
     print ('Loading word embedding from %s'%file_name)
     ret = {}
-    with open(file_name) as inf:
+    with open(file_name,encoding='utf-8') as inf:
         for idx, line in enumerate(inf):
             if (use_small and idx >= 500000):
                 break
@@ -270,6 +270,7 @@ def epoch_acc(model, batch_size, sql_data, table_data, beam_size=3):
         ed = st+batch_size if st+batch_size < len(perm) else len(perm)
         examples = to_batch_seq(sql_data, table_data, perm, st, ed,
                                                         is_train=False)
+        print(examples[0])
         for example in examples:
             results_all = model.parse(example, beam_size=beam_size)
             results = results_all[0]

@@ -53,6 +53,36 @@ class Example:
                     continue
                 self.sketch.append(ta)
 
+    def __str__(self):
+        str = ''
+        str += "src_sent:{}\n".format(self.src_sent)
+        str += "vis_seq:{}\n".format(self.vis_seq)
+        str += "tab_cols:{}\n".format(self.tab_cols)
+        str += "col_num:{}\n".format(self.col_num)
+        str += "sql:{}\n".format(self.sql)
+        str += "one_hot_type:{}\n".format(self.one_hot_type)
+        str += "col_hot_type:{}\n".format(self.col_hot_type)
+        str += "schema_len:{}\n".format(self.schema_len)
+        str += "tab_ids:{}\n".format(self.tab_ids)
+        str += "tab_names:{}\n".format(self.table_names)
+        str += "tab_len:{}\n".format(self.table_len)
+        str += "table_col_name:{}\n".format(self.table_col_name)
+        str += "table_col_len:{}\n".format(self.table_col_len)
+        str += "col_pred:{}\n".format(self.col_pred)
+        str += "tgt_actions:{}\n".format(self.tgt_actions)
+        return str
+# src_sent:[['what'], ['are'], ['name'], ['of'], ['table', 'product'], ['that'], ['are'], ['not'], ["'"], ['white'], ["'"], ['in'], ['color'], ['and'], ['are'], ['not'], ['measured'], ['by'], ['unit'], ["'"], ['handful'], ["'"], ['?']]
+# vis_seq:("What are the names of products that are not 'white' in color and are not measured by the unit 'Handful'?", [['count', 'number', 'many'], ['characteristic', 'type', 'code'], ['characteristic', 'type', 'description'], ['color', 'code'], ['color', 'description'], ['product', 'category', 'code'], ['product', 'category', 'description'], ['unit', 'of', 'measure'], ['characteristic', 'id'], ['characteristic', 'data', 'type'], ['characteristic', 'name'], ['other', 'characteristic', 'detail'], ['product', 'id'], ['product', 'name'], ['typical', 'buying', 'price'], ['typical', 'selling', 'price'], ['product', 'description'], ['other', 'product', 'detail'], ['product', 'characteristic', 'value']], 'SELECT t1.product_name FROM products AS t1 JOIN ref_product_categories AS t2 ON t1.product_category_code  =  t2.product_category_code JOIN ref_colors AS t3 ON t1.color_code  =  t3.color_code WHERE t3.color_description  =  "white" AND t2.unit_of_measure != "Handful"')
+# tab_cols:[['count', 'number', 'many'], ['characteristic', 'type', 'code'], ['characteristic', 'type', 'description'], ['color', 'code'], ['color', 'description'], ['product', 'category', 'code'], ['product', 'category', 'description'], ['unit', 'of', 'measure'], ['characteristic', 'id'], ['characteristic', 'data', 'type'], ['characteristic', 'name'], ['other', 'characteristic', 'detail'], ['product', 'id'], ['product', 'name'], ['typical', 'buying', 'price'], ['typical', 'selling', 'price'], ['product', 'description'], ['other', 'product', 'detail'], ['product', 'characteristic', 'value']]
+# col_num:19
+# tab_names:[['reference', 'characteristic', 'type'], ['reference', 'color'], ['reference', 'product', 'category'], ['characteristic'], ['product'], ['product', 'characteristic']]
+# tab_len:6
+# table_col_name:[['characteristic', 'type', 'code', 'characteristic', 'type', 'description'], ['color', 'code', 'color', 'description'], ['product', 'category', 'code', 'product', 'category', 'description', 'unit', 'of', 'measure'], ['characteristic', 'id', 'characteristic', 'type', 'code', 'characteristic', 'data', 'type', 'characteristic', 'name', 'other', 'characteristic', 'detail'], ['product', 'id', 'color', 'code', 'product', 'category', 'code', 'product', 'name', 'typical', 'buying', 'price', 'typical', 'selling', 'price', 'product', 'description', 'other', 'product', 'detail'], ['product', 'id', 'characteristic', 'id', 'product', 'characteristic', 'value']]
+# table_col_len:6
+# col_pred:None
+# tgt_actions:[Root1(3), Root(3), Sel(0), N(0), A(none), C(13), T(4), Filter(Filter and Filter Filter), Filter(Filter = A), A(none), C(4), T(1), Filter(Filter != A), A(none), C(7), T(2)]
+
+
 
 class cached_property(object):
     """ A property that is only computed once per instance and then replaces

@@ -12,7 +12,7 @@ import json
 import argparse
 import nltk
 from nltk import data
-data.path.append(r"D:\NL2SQL\packages")
+data.path.append(r"C:\Users\dyy40\NL2SQL\packages")
 import os
 import pickle
 from utils import symbol_filter, re_lemma, fully_part_header, group_header, partial_header, num2year, group_symbol, group_values, group_digital
