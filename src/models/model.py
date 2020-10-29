@@ -179,8 +179,10 @@ class IRNet(BasicModel):
                 pre_types = torch.stack(pre_types)
 
                 inputs.append(att_tm1)
+                # print(att_tm1.shape) torch.Size([64, 300])
                 inputs.append(pre_types)
                 x = torch.cat(inputs, dim=-1)
+                # print(x.shape) torch.Size([64, 556]) 556 = 128 + 300 + 128, production_embed:128, attention_embeding:300, type_embed:128
             src_mask = batch.src_token_mask
             # rnn?
             (h_t, cell_t), att_t, aw = self.step(x, h_tm1, src_encodings,
@@ -192,12 +194,14 @@ class IRNet(BasicModel):
 
             # get the Root possibility,在att_t解析出规则概率
             apply_rule_prob = F.softmax(self.production_readout(att_t), dim=-1)
+            # print(apply_rule_prob.shape) torch.Size([64, 46])
 
-            # 对每个例子，计算第t步选择动作的概率
+            # 对每个例子，记录第t步选择动作的概率
             for e_id, example in enumerate(examples):
                 if t < len(example.sketch):
                     action_t = example.sketch[t]
                     act_prob_t_i = apply_rule_prob[e_id, self.grammar.prod2id[action_t.production]]
+                    # print(act_prob_t_i) torch.Size([1])
                     action_probs[e_id].append(act_prob_t_i)
 
 
@@ -205,7 +209,7 @@ class IRNet(BasicModel):
             att_tm1 = att_t
 
 
-        # 循环完毕，对动作概率矩阵作整理
+        # 循环完毕，整理action_probs
         #print('action_probs:',len(action_probs),len(action_probs[0])) (64 action_num)即64*action_num，每一个位置是一个数值tensor
         sketch_prob_var = torch.stack(
             [torch.stack(action_probs_i, dim=0).log().sum() for action_probs_i in action_probs], dim=0)
@@ -234,6 +238,7 @@ class IRNet(BasicModel):
 
         # 表征每一个col是什么类型，独热编码和embedding
         col_type = self.input_type(batch.col_hot_type)
+        # print((batch.col_hot_type)[0].shape)(batch,colnum, 4)
 
         col_type_var = self.col_type(col_type)
         # print(col_type.shape, col_type_var.shape) torch.Size([64, 45, 4]) torch.Size([64, 45, 300])
@@ -246,6 +251,7 @@ class IRNet(BasicModel):
         action_probs = [[] for _ in examples]
 
         h_tm1 = dec_init_vec
+        # print('h_tm1:',len(h_tm1),h_tm1[0].shape,h_tm1[1].shape) 2,torch.Size([64, 300]),torch.Size([64, 300])
 
         for t in range(batch.max_action_num):
             if t == 0:
@@ -287,7 +293,7 @@ class IRNet(BasicModel):
                     a_tm1_embeds.append(a_tm1_embed)
 
                 a_tm1_embeds = torch.stack(a_tm1_embeds)
-
+                # print(a_tm1_embeds.shape) torch.Size([64, 128])
                 inputs = [a_tm1_embeds]
 
                 # tgt t-1 action type
@@ -300,12 +306,13 @@ class IRNet(BasicModel):
                     pre_types.append(pre_type)
 
                 pre_types = torch.stack(pre_types)
-
+                # print(pre_types.shape) torch.Size([64, 128])
                 inputs.append(att_tm1)
 
                 inputs.append(pre_types)
 
                 x = torch.cat(inputs, dim=-1)
+                # print(x.shape) torch.Size([64, 556])
 
             src_mask = batch.src_token_mask
 
@@ -315,6 +322,7 @@ class IRNet(BasicModel):
                                                  src_token_mask=src_mask, return_att_weight=True)
 
             apply_rule_prob = F.softmax(self.production_readout(att_t), dim=-1)
+            # print(apply_rule_prob.shape) torch.Size([64, 46])
             table_appear_mask_val = torch.from_numpy(table_appear_mask)
             if self.cuda:
                 table_appear_mask_val = table_appear_mask_val.cuda()
@@ -332,6 +340,7 @@ class IRNet(BasicModel):
             weights.data.masked_fill_(batch.table_token_mask.bool(), -float('inf'))
 
             column_attention_weights = F.softmax(weights, dim=-1)
+            # print(weights.shape,column_attention_weights.shape) torch.Size([64, columns]) torch.Size([64, columns])
 
             table_weights = self.table_pointer_net(src_encodings=schema_embedding, query_vec=att_t.unsqueeze(0),
                                                    src_token_mask=None)
@@ -359,6 +368,7 @@ class IRNet(BasicModel):
                         act_prob_t_i = apply_rule_prob[e_id, self.grammar.prod2id[action_t.production]]
                         action_probs[e_id].append(act_prob_t_i)
                     else:
+                        # 只有ACT，其他的production无脑pass掉
                         pass
             h_tm1 = (h_t, cell_t)
             att_tm1 = att_t
