@@ -200,14 +200,16 @@ class IRNet(BasicModel):
                     act_prob_t_i = apply_rule_prob[e_id, self.grammar.prod2id[action_t.production]]
                     action_probs[e_id].append(act_prob_t_i)
 
+
             h_tm1 = (h_t, cell_t)
             att_tm1 = att_t
 
 
         # 循环完毕，对动作概率矩阵作整理
-        #print('action_probs:',len(action_probs),len(action_probs[0])) (64 5,4,7,9)即64*action_num，每一个位置是一个数值tensor
+        #print('action_probs:',len(action_probs),len(action_probs[0])) (64 action_num)即64*action_num，每一个位置是一个数值tensor
         sketch_prob_var = torch.stack(
             [torch.stack(action_probs_i, dim=0).log().sum() for action_probs_i in action_probs], dim=0)
+
         #print('sketch_prob_var:',sketch_prob_var.shape) torch.Size([64])
 
         table_embedding = self.gen_x_batch(batch.table_sents)
@@ -756,6 +758,7 @@ class IRNet(BasicModel):
         completed_beams.sort(key=lambda hyp: -hyp.score)
 
         return [completed_beams, sketch_actions]
+
 
     def step(self, x, h_tm1, src_encodings, src_encodings_att_linear, decoder, attention_func, src_token_mask=None,
              return_att_weight=False):
